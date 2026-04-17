@@ -1,0 +1,33 @@
+async function runSignal(stock) {
+  const result = computeSignal(stock);
+
+  console.log("STOCK:", stock);
+  console.log("SIGNAL RESULT:", result);
+
+  const { error } = await supabase
+    .from("ngx_stocks")
+    .update({
+      signal: result.signal,
+      confidence: result.confidence,
+      ai_analysis: result.reasoning,
+    })
+    .eq("ticker", stock.ticker);
+
+  if (error) {
+    console.log("UPDATE ERROR:", error);
+    return;
+  }
+
+  setStocks((prev) =>
+    prev.map((s) =>
+      s.ticker === stock.ticker
+        ? {
+            ...s,
+            signal: result.signal,
+            confidence: result.confidence,
+            ai_analysis: result.reasoning,
+          }
+        : s
+    )
+  );
+}
