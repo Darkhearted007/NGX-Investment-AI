@@ -18,6 +18,70 @@ dist-ssr
 .idea
 .DS_Store
 *.suo
+
+# Environment variables - NEVER commit real credentials!
+.env
+.env.local
+.env.*.local
+.env.production.local
+
+# Docker volumes and data
+ssl/*.pem
+ssl/*.key
+ssl/cert.pem
+ssl/key.pem
+
+# Docker runtime files
+.dockerignore.prod
+docker-compose.override.yml
+
+# IDE
+.vscode
+!.vscode/extensions.json
+.idea
+*.swp
+*.swo
+*~
+.project
+.classpath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+dist-ssr/
+*.egg-info/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Package manager
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Cache
+.cache/
+.eslintcache
+.parcelcache
+.prettier-cache
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Optional .vscode settings
+.vscode/
+!.vscode/extensions.json
+
+# dotenv environment variable files
+.env.production
 *.ntvs*
 *.njsproj
 *.sln
