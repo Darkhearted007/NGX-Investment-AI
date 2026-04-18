@@ -1,132 +1,75 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
-import { computeSignal } from "../services/signalEngine";
+import React from 'react';
+import { useEffect, useState } from 'react';
+import './Dashboard.css'; // Ensure to create this file for Tailwind CSS styles
 
-export default function Dashboard() {
-  const [stocks, setStocks] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [winRate, setWinRate] = useState(0);
+const Dashboard = () => {
+    const [metrics, setMetrics] = useState([]);
+    const [signals, setSignals] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadStocks();
-    loadHistory();
-  }, []);
+    const fetchMetrics = async () => {
+        // Simulate fetching metrics
+        setLoading(true);
+        const response = await fetch('/api/metrics');
+        const data = await response.json();
+        setMetrics(data);
+        setLoading(false);
+    };
 
-  async function loadStocks() {
-    const { data, error } = await supabase
-      .from("ngx_stocks")
-      .select("*");
+    const fetchSignals = async () => {
+        // Simulate fetching live signals
+        const response = await fetch('/api/signals');
+        const data = await response.json();
+        setSignals(data);
+    };
 
-    if (!error) setStocks(data || []);
-  }
+    useEffect(() => {
+        fetchMetrics();
+        fetchSignals();
+        const interval = setInterval(() => {
+            fetchSignals();
+        }, 10000); // Fetch live signals every 10 seconds
+        return () => clearInterval(interval);
+    }, []);
 
-  async function loadHistory() {
-    const { data, error } = await supabase
-      .from("ngx_signal_history")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (!error) {
-      setHistory(data || []);
-      calculateWinRate(data || []);
-    }
-  }
-
-  function calculateWinRate(data) {
-    const closed = data.filter(h => h.outcome !== "PENDING");
-    const wins = closed.filter(h => h.outcome === "WIN");
-    const rate = closed.length
-      ? Math.round((wins.length / closed.length) * 100)
-      : 0;
-
-    setWinRate(rate);
-  }
-
-  async function runSignal(stock) {
-    const result = computeSignal(stock);
-
-    await supabase
-      .from("ngx_stocks")
-      .update({
-        signal: result.signal,
-        confidence: result.confidence,
-        analysis: result.analysis,
-        last_updated: new Date()
-      })
-      .eq("id", stock.id);
-
-    await supabase
-      .from("ngx_signal_history")
-      .insert({
-        stock: stock.ticker,
-        price: stock.price,
-        signal: result.signal,
-        confidence: result.confidence
-      });
-
-    loadStocks();
-    loadHistory();
-  }
-
-  async function updateOutcome(id, outcome) {
-    await supabase
-      .from("ngx_signal_history")
-      .update({ outcome })
-      .eq("id", id);
-
-    loadHistory();
-  }
-
-  return (
-    <div style={{ padding: 20 }}>
-      <h1>🚀 NGX SIGNAL TERMINAL (LAYER 3)</h1>
-
-      <h2>📊 Performance</h2>
-      <p><strong>Win Rate:</strong> {winRate}%</p>
-      <p><strong>Total Signals:</strong> {history.length}</p>
-
-      <hr />
-
-      <h2>📈 Live Signals</h2>
-
-      {stocks.map(stock => (
-        <div key={stock.id} style={{
-          border: "1px solid #ccc",
-          padding: 15,
-          marginBottom: 10,
-          borderRadius: 8
-        }}>
-          <h3>{stock.ticker}</h3>
-          <p>Price: ₦{stock.price}</p>
-          <p>Signal: <strong>{stock.signal || "NONE"}</strong></p>
-          <p>Confidence: {stock.confidence || 0}%</p>
-          <p>{stock.analysis || "No analysis yet"}</p>
-
-          <button onClick={() => runSignal(stock)}>
-            ⚡ Run Signal
-          </button>
+    return (
+        <div className="bg-gradient-to-r from-blue-400 to-purple-600 min-h-screen p-10">
+            <h1 className="text-white text-3xl font-bold mb-6">Dashboard</h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {loading ? (
+                    <div className="loading">Loading...</div>
+                ) : (
+                    metrics.map((metric) => (
+                        <div key={metric.id} className="bg-white rounded-lg p-4 shadow">
+                            <h2 className="text-xl font-semibold">{metric.title}</h2>
+                            <p className="text-gray-700">{metric.value}</p>
+                        </div>
+                    ))
+                )}
+            </div>
+            <h2 className="text-white text-2xl font-bold mt-8">Live Signals</h2>
+            <div className="overflow-x-auto mt-4">
+                <table className="min-w-full bg-white">
+                    <thead>
+                        <tr className="bg-gray-200">
+                            <th className="py-2 px-4">Signal</th>
+                            <th className="py-2 px-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {signals.map((signal) => (
+                            <tr key={signal.id} className="hover:bg-gray-100">
+                                <td className="py-2 px-4">{signal.name}</td>
+                                <td className="py-2 px-4">
+                                    <button className="bg-blue-500 text-white rounded px-4 py-2">Action</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
-      ))}
+    );
+};
 
-      <hr />
-
-      <h2>🕒 Signal History</h2>
-
-      {history.slice(0, 10).map(item => (
-        <div key={item.id} style={{
-          borderBottom: "1px solid #eee",
-          padding: 10
-        }}>
-          <strong>{item.stock}</strong> | ₦{item.price} | {item.signal} | {item.confidence}%
-          <br />
-          <small>{new Date(item.created_at).toLocaleString()}</small>
-          <br />
-          Outcome:
-          <button onClick={() => updateOutcome(item.id, "WIN")}> WIN </button>
-          <button onClick={() => updateOutcome(item.id, "LOSS")}> LOSS </button>
-          <button onClick={() => updateOutcome(item.id, "PENDING")}> RESET </button>
-        </div>
-      ))}
-    </div>
-  );
-}
+export default Dashboard;
